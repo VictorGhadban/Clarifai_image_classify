@@ -21,7 +21,7 @@ os.environ['CLARIFAI_API_KEY'] = CLARIFAI_API_KEY
 
 # Function to classify image using Clarifai
 def classify_image(image):
-    url = f"https://api.clarifai.com/v2/models/{MODEL_ID}/outputs"
+    url = f"https://clarifai.com/victor_g/Victor_Img_class/models/victor-tl-classifier"
     headers = {
         "Authorization": f"Key {CLARIFAI_API_KEY}",
         "Content-Type": "application/json"
