@@ -12,13 +12,24 @@ ClarifaiStreamlitCSS.insert_default_css(st)
 auth = ClarifaiAuthHelper.from_streamlit(st)
 stub = create_stub(auth)
 userDataObject = auth.get_user_app_id_proto()
+model_url = (
+    "https://clarifai.com/victor_g/Victor_Img_class/models/victor-tl-classifier"
+)
+st.title('Image Classification App')
+st.write('Upload an image for classification')
 
-st.title("Simple example to list inputs")
+# File uploader
+uploaded_file = st.file_uploader('Choose an image...', type=['jpg', 'jpeg', 'png'])
 
-with st.form(key="data-inputs"):
-  mtotal = st.number_input(
-      "Select number of inputs to view in a table:", min_value=5, max_value=100)
-  submitted = st.form_submit_button('Submit')
+if uploaded_file is not None:
+    # Display the uploaded image
+    image = Image.open(uploaded_file)
+    st.image(image, caption='Uploaded Image', use_column_width=True)
+    
+    # Preprocess the image
+    img = preprocess_image(image)
+
+
 
 if submitted:
   if mtotal is None or mtotal == 0:
@@ -27,27 +38,12 @@ if submitted:
   else:
     st.write("Number of inputs in table will be: {}".format(mtotal))
 
-  # Stream inputs from the app. list_inputs give list of dictionaries with inputs and its metadata .
-  input_obj = User(user_id=userDataObject.user_id).app(app_id=userDataObject.app_id).inputs()
-  all_inputs = input_obj.list_inputs()
+# Predict the class
+    predictions = model.predict(img)
+    predicted_class = class_names[np.argmax(predictions[0])]
+    model_prediction = Model(url=model_url, pat="edd5180d73a64b30b4fbc2085f775ef4").predict_by_url(
+    image_url, input_type="image"
+)
 
-  #Check for no of inputs in the app and compare it with no of inputs to be displayed.
-  if len(all_inputs) < (mtotal):
-    raise Exception(
-        f"No of inputs is less than {mtotal}. Please add more inputs or reduce the inputs to be displayed !"
-    )
-
-  else:
-    data = []
-    #added "data_url" which gives the url of the input.
-    for inp in range(mtotal):
-      data.append({
-          "id": all_inputs[inp].id,
-          "data_url": all_inputs[inp].data.image.url,
-          "status": all_inputs[inp].status.description,
-          "created_at": timestamp_pb2.Timestamp.ToDatetime(all_inputs[inp].created_at),
-          "modified_at": timestamp_pb2.Timestamp.ToDatetime(all_inputs[inp].modified_at),
-          "metadata": json_format.MessageToDict(all_inputs[inp].data.metadata),
-      })
-
-  st.dataframe(data)
+    # Display the prediction
+    st.write(f'Predicted Class: {predicted_class}')
