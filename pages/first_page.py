@@ -5,17 +5,48 @@ from clarifai.client.user import User
 from clarifai.modules.css import ClarifaiStreamlitCSS
 from google.protobuf import json_format, timestamp_pb2
 
-st.set_page_config(layout="wide")
-ClarifaiStreamlitCSS.insert_default_css(st)
+import streamlit as st
+from PIL import Image
+import requests
+import io
+import os
+import base64
 
-# This must be within the display() function.
-auth = ClarifaiAuthHelper.from_streamlit(st)
-stub = create_stub(auth)
-userDataObject = auth.get_user_app_id_proto()
-model_url = (
-    "https://clarifai.com/victor_g/Victor_Img_class/models/victor-tl-classifier"
-)
-st.title('Image Classification App')
+# Clarifai API key and model ID
+CLARIFAI_API_KEY = '7e2b5b718f274810a8bd1f08a28d4236'
+MODEL_ID = '75c5d7b06855413a93fb3dbe96a3f4fd'  # Specify your model ID here
+
+# Set the API key in the environment variable
+os.environ['CLARIFAI_API_KEY'] = CLARIFAI_API_KEY
+
+# Function to classify image using Clarifai
+def classify_image(image):
+    url = f"https://api.clarifai.com/v2/models/{MODEL_ID}/outputs"
+    headers = {
+        "Authorization": f"Key {CLARIFAI_API_KEY}",
+        "Content-Type": "application/json"
+    }
+    img_bytes = io.BytesIO()
+    image.save(img_bytes, format='JPEG')
+    img_str = base64.b64encode(img_bytes.getvalue()).decode('utf-8')
+    
+    data = {
+        "inputs": [
+            {
+                "data": {
+                    "image": {
+                        "base64": img_str
+                    }
+                }
+            }
+        ]
+    }
+    
+    response = requests.post(url, headers=headers, json=data)
+    return response.json()
+
+# Streamlit app
+st.title('Image Classification App with Clarifai')
 st.write('Upload an image for classification')
 
 # File uploader
@@ -26,24 +57,15 @@ if uploaded_file is not None:
     image = Image.open(uploaded_file)
     st.image(image, caption='Uploaded Image', use_column_width=True)
     
-    # Preprocess the image
-    img = preprocess_image(image)
-
-
-
-if submitted:
-  if mtotal is None or mtotal == 0:
-    st.warning("Number of inputs must be provided.")
-    st.stop()
-  else:
-    st.write("Number of inputs in table will be: {}".format(mtotal))
-
-# Predict the class
-    predictions = model.predict(img)
-    predicted_class = class_names[np.argmax(predictions[0])]
-    model_prediction = Model(url=model_url, pat="edd5180d73a64b30b4fbc2085f775ef4").predict_by_url(
-    image_url, input_type="image"
-)
-
-    # Display the prediction
-    st.write(f'Predicted Class: {predicted_class}')
+    # Classify the image
+    st.write('Classifying the image...')
+    result = classify_image(image)
+    
+    # Display the results
+    if result:
+        concepts = result['outputs'][0]['data']['concepts']
+        st.write('Predicted concepts:')
+        for concept in concepts:
+            st.write(f"{concept['name']}: {concept['value']:.2f}")
+    else:
+        st.write('Unable to classify the image. Please try again.')
